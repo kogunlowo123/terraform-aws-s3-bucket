@@ -2,6 +2,53 @@
 
 Production-grade Terraform module for AWS S3 buckets with comprehensive security controls, intelligent tiering, replication, object lock, access points, and event notifications.
 
+## Architecture
+
+```mermaid
+flowchart TB
+    subgraph S3["Amazon S3 Bucket"]
+        direction TB
+        B[S3 Bucket] --> V[Versioning]
+        B --> E[SSE-KMS Encryption]
+        B --> P[Public Access Block]
+        B --> O[Ownership Controls]
+        B --> BP[Bucket Policy - TLS Enforced]
+    end
+
+    subgraph Lifecycle["Lifecycle Management"]
+        L1[Standard] -->|30 days| L2[Standard-IA]
+        L2 -->|90 days| L3[Glacier]
+        L3 -->|365 days| L4[Deep Archive]
+    end
+
+    subgraph Replication["Cross-Region Replication"]
+        SRC[Source Bucket] -->|Async| DST[Destination Bucket]
+    end
+
+    subgraph Events["Event Notifications"]
+        B -->|PutObject| Lambda[Lambda Function]
+        B -->|DeleteObject| SQS[SQS Queue]
+        B -->|s3:*| SNS[SNS Topic]
+    end
+
+    subgraph Access["Access Control"]
+        AP[Access Points] --> VPC[VPC-Restricted]
+        AP --> PUB[Public Access]
+        OL[Object Lock] --> GOV[Governance Mode]
+        OL --> COMP[Compliance Mode]
+    end
+
+    B --> Lifecycle
+    B --> Replication
+    B --> Access
+
+    style S3 fill:#FF9900,color:#fff
+    style Lifecycle fill:#3F8624,color:#fff
+    style Replication fill:#1A73E8,color:#fff
+    style Events fill:#DD344C,color:#fff
+    style Access fill:#8C4FFF,color:#fff
+```
+
 ## Features
 
 - Server-side encryption (SSE-S3 or SSE-KMS with bucket key)
