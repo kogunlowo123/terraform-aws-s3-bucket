@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>terraform-aws-s3-bucket | Architecture</title>
+<style>
+:root{--ink:#0b0c0b;--accent:#c8420a;--surface:#141514;--border:#2a2b2a;--text:#d4d4d4;--muted:#8a8a8a;--card:#1a1b1a;--success:#2ea043;--warn:#d29922;--info:#388bfd}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--ink);color:var(--text);font-family:'SF Mono','Cascadia Code','Fira Code',monospace;font-size:15px;line-height:1.7;padding:0}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.container{max-width:1200px;margin:0 auto;padding:2rem 1.5rem}
+header{border-bottom:2px solid var(--accent);padding:2rem 0;margin-bottom:3rem}
+header h1{font-size:1.8rem;color:#fff;margin-bottom:.5rem}
+header p{color:var(--muted);font-size:.95rem}
+h2{color:var(--accent);font-size:1.3rem;margin:2.5rem 0 1rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)}
+h3{color:#fff;font-size:1.05rem;margin:1.5rem 0 .75rem}
+.badge{display:inline-block;padding:.2rem .6rem;border-radius:3px;font-size:.75rem;font-weight:600;margin-right:.5rem}
+.badge-accent{background:var(--accent);color:#fff}
+.badge-success{background:var(--success);color:#fff}
+.badge-info{background:var(--info);color:#fff}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem;margin:1rem 0}
+.card{background:var(--card);border:1px solid var(--border);border-radius:6px;padding:1.25rem}
+.card h4{color:#fff;margin-bottom:.5rem;font-size:.95rem}
+.card p{color:var(--muted);font-size:.85rem}
+.card .num{font-size:1.8rem;color:var(--accent);font-weight:700}
+.diagram{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:2rem;margin:1.5rem 0;overflow-x:auto}
+.flow{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:.5rem}
+.flow-box{background:var(--card);border:2px solid var(--accent);border-radius:6px;padding:.75rem 1.25rem;text-align:center;min-width:140px;font-size:.85rem;color:#fff}
+.flow-box.alt{border-color:var(--info)}
+.flow-box.green{border-color:var(--success)}
+.flow-box.warn{border-color:var(--warn)}
+.flow-arrow{color:var(--accent);font-size:1.5rem;font-weight:700}
+.table-wrap{overflow-x:auto;margin:1rem 0}
+table{width:100%;border-collapse:collapse;font-size:.85rem}
+th{background:var(--surface);color:var(--accent);text-align:left;padding:.75rem;border:1px solid var(--border)}
+td{padding:.75rem;border:1px solid var(--border);color:var(--text)}
+tr:hover td{background:var(--surface)}
+.checklist{list-style:none;margin:1rem 0}
+.checklist li{padding:.4rem 0;padding-left:1.5rem;position:relative;font-size:.9rem}
+.checklist li::before{content:"[ ]";position:absolute;left:0;color:var(--accent);font-weight:700}
+code{background:var(--surface);padding:.15rem .4rem;border-radius:3px;font-size:.85rem;color:var(--accent)}
+pre{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:1.25rem;overflow-x:auto;font-size:.85rem;line-height:1.5;margin:1rem 0}
+.section{margin-bottom:2rem}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem}
+@media(max-width:768px){.grid-2,.grid-3{grid-template-columns:1fr}.flow{flex-direction:column}.flow-arrow{transform:rotate(90deg)}}
+footer{border-top:1px solid var(--border);margin-top:3rem;padding:2rem 0;color:var(--muted);font-size:.8rem;text-align:center}
+</style>
+</head>
+<body>
+<div class="container">
+
+<header>
+<h1>terraform-aws-s3-bucket</h1>
+<p>Architecture Document &mdash; Production-Grade AWS S3 Bucket Module</p>
+<p><span class="badge badge-accent">Terraform &ge; 1.5.0</span><span class="badge badge-info">AWS Provider &ge; 5.20.0</span><span class="badge badge-success">MIT License</span></p>
+</header>
+
+<!-- Executive Summary -->
+<section class="section">
+<h2>Executive Summary</h2>
+<p>This Terraform module provisions production-grade AWS S3 buckets with comprehensive security controls aligned to CIS AWS Foundations Benchmark and AWS Security Hub best practices. It manages encryption (SSE-S3/SSE-KMS), versioning with MFA Delete, public access blocking, TLS enforcement, lifecycle management with intelligent tiering, cross-region replication, Object Lock (WORM), CORS configuration, static website hosting, event notifications (Lambda/SQS/SNS), S3 Access Points with VPC restriction, and custom bucket policies.</p>
+</section>
+
+<!-- Overview Cards -->
+<section class="section">
+<h2>Overview</h2>
+<div class="cards">
+<div class="card"><div class="num">14</div><h4>Resources Managed</h4><p>Bucket, versioning, encryption, public access, logging, lifecycle, replication, object lock, CORS, website, notifications, access points, policy, ownership</p></div>
+<div class="card"><div class="num">21</div><h4>Input Variables</h4><p>Bucket config, encryption, versioning, lifecycle, replication, object lock, CORS, website, events, access points, policy</p></div>
+<div class="card"><div class="num">5</div><h4>Outputs</h4><p>Bucket ID, ARN, domain name, regional domain, hosted zone ID</p></div>
+<div class="card"><div class="num">6</div><h4>CIS Controls</h4><p>Encryption, TLS enforcement, public access block, versioning, logging, lifecycle</p></div>
+</div>
+</section>
+
+<!-- Architecture Diagram -->
+<section class="section">
+<h2>Architecture Diagram</h2>
+<div class="diagram">
+<h3 style="text-align:center;margin-bottom:1.5rem;color:var(--muted)">S3 Bucket Core Configuration</h3>
+<div class="flow">
+<div class="flow-box">S3 Bucket</div>
+<div class="flow-arrow">&rarr;</div>
+<div class="flow-box green">Versioning</div>
+<div class="flow-arrow">&rarr;</div>
+<div class="flow-box green">SSE-KMS / AES-256<br>Encryption</div>
+<div class="flow-arrow">&rarr;</div>
+<div class="flow-box green">Public Access<br>Block (All 4)</div>
+<div class="flow-arrow">&rarr;</div>
+<div class="flow-box green">TLS Enforced<br>Bucket Policy</div>
+</div>
+<h3 style="text-align:center;margin:2rem 0 1.5rem;color:var(--muted)">Lifecycle &amp; Storage Tiering</h3>
+<div class="flow">
+<div class="flow-box">Standard</div>
+<div class="flow-arrow">&rarr;</div>
+<div class="flow-box alt">Standard-IA<br>(30 days)</div>
+<div class="flow-arrow">&rarr;</div>
+<div class="flow-box alt">Glacier<br>(90 days)</div>
+<div class="flow-arrow">&rarr;</div>
+<div class="flow-box alt">Deep Archive<br>(365 days)</div>
+</div>
+<h3 style="text-align:center;margin:2rem 0 1.5rem;color:var(--muted)">Event-Driven &amp; Replication</h3>
+<div class="flow">
+<div class="flow-box">S3 Events</div>
+<div class="flow-arrow">&rarr;</div>
+<div class="flow-box warn">Lambda</div>
+<div class="flow-box warn">SQS Queue</div>
+<div class="flow-box warn">SNS Topic</div>
+</div>
+<div class="flow" style="margin-top:1rem">
+<div class="flow-box">Source Bucket</div>
+<div class="flow-arrow">&rarr;</div>
+<div class="flow-box alt">Cross-Region<br>Replication</div>
+<div class="flow-arrow">&rarr;</div>
+<div class="flow-box">Destination<br>Bucket</div>
+</div>
+<h3 style="text-align:center;margin:2rem 0 1.5rem;color:var(--muted)">Access Control</h3>
+<div class="flow">
+<div class="flow-box green">Access Points</div>
+<div class="flow-arrow">&rarr;</div>
+<div class="flow-box green">VPC-Restricted</div>
+<div class="flow-box">Object Lock<br>(WORM)</div>
+<div class="flow-arrow">&rarr;</div>
+<div class="flow-box warn">Governance</div>
+<div class="flow-box">Compliance</div>
+</div>
+</div>
+</section>
+
+<!-- Component Breakdown -->
+<section class="section">
+<h2>Component Breakdown</h2>
+<div class="table-wrap">
+<table>
+<tr><th>Resource</th><th>Purpose</th></tr>
+<tr><td><code>aws_s3_bucket.this</code></td><td>Core bucket with optional object lock, name or prefix-based naming</td></tr>
+<tr><td><code>aws_s3_bucket_ownership_controls.this</code></td><td>BucketOwnerEnforced ownership (disables ACLs)</td></tr>
+<tr><td><code>aws_s3_bucket_versioning.this</code></td><td>Versioning with optional MFA Delete for data protection</td></tr>
+<tr><td><code>aws_s3_bucket_server_side_encryption_configuration.this</code></td><td>SSE-KMS (with bucket key) or AES-256 encryption at rest</td></tr>
+<tr><td><code>aws_s3_bucket_public_access_block.this</code></td><td>All four public access block settings for CIS compliance</td></tr>
+<tr><td><code>aws_s3_bucket_logging.this</code></td><td>Server access logging to target bucket with configurable prefix</td></tr>
+<tr><td><code>aws_s3_bucket_lifecycle_configuration.this</code></td><td>Lifecycle rules with transitions, expiration, noncurrent version management</td></tr>
+<tr><td><code>aws_s3_bucket_replication_configuration.this</code></td><td>Cross-region/same-region replication with delete marker handling</td></tr>
+<tr><td><code>aws_s3_bucket_object_lock_configuration.this</code></td><td>WORM protection in Governance or Compliance mode with retention period</td></tr>
+<tr><td><code>aws_s3_bucket_cors_configuration.this</code></td><td>CORS rules for browser-based access (headers, methods, origins, max age)</td></tr>
+<tr><td><code>aws_s3_bucket_website_configuration.this</code></td><td>Static website hosting with index and error documents</td></tr>
+<tr><td><code>aws_s3_bucket_notification.this</code></td><td>Event notifications to Lambda, SQS, and SNS with prefix/suffix filters</td></tr>
+<tr><td><code>aws_s3_access_point.this</code></td><td>Named access points with optional VPC restriction and custom policies</td></tr>
+<tr><td><code>aws_s3_bucket_policy.this</code></td><td>Custom bucket policy merged with auto-generated TLS enforcement policy</td></tr>
+</table>
+</div>
+</section>
+
+<!-- Data Flow -->
+<section class="section">
+<h2>Data Flow</h2>
+<div class="diagram">
+<ol style="list-style:decimal inside;color:var(--text);font-size:.9rem;line-height:2">
+<li><strong>Object upload</strong> is encrypted at rest using SSE-KMS (with bucket key) or AES-256 depending on configuration</li>
+<li><strong>Bucket policy</strong> enforces TLS 1.2+ for all requests, denying any HTTP connections</li>
+<li><strong>Public access block</strong> prevents any public ACLs or policies from being applied</li>
+<li><strong>Versioning</strong> maintains all versions of objects; MFA Delete requires two-factor for deletions</li>
+<li><strong>Lifecycle rules</strong> automatically transition objects through storage tiers and expire old versions</li>
+<li><strong>Event notifications</strong> trigger Lambda functions, SQS queues, or SNS topics on object events</li>
+<li><strong>Replication</strong> asynchronously copies objects to destination bucket(s) across regions</li>
+<li><strong>Access points</strong> provide named network endpoints with per-point permissions and optional VPC restriction</li>
+<li><strong>Object Lock</strong> prevents object deletion/modification for the configured retention period</li>
+<li><strong>Access logging</strong> records all requests to a separate target bucket for audit trails</li>
+</ol>
+</div>
+</section>
+
+<!-- Security Controls -->
+<section class="section">
+<h2>Security Controls</h2>
+<h3>CIS AWS Foundations Benchmark Alignment</h3>
+<div class="table-wrap">
+<table>
+<tr><th>Control</th><th>Description</th><th>Default</th></tr>
+<tr><td>2.1.1</td><td>S3 bucket server-side encryption enabled</td><td>Enabled (SSE-S3 or SSE-KMS)</td></tr>
+<tr><td>2.1.2</td><td>S3 bucket policy denies HTTP requests</td><td>Enforced (enforce_tls = true)</td></tr>
+<tr><td>2.1.5</td><td>S3 buckets with Block Public Access</td><td>Enabled (all four settings)</td></tr>
+<tr><td>3.6</td><td>S3 bucket access logging enabled</td><td>Configurable (enable_logging)</td></tr>
+</table>
+</div>
+
+<h3>AWS Security Hub Controls</h3>
+<div class="grid-3">
+<div class="card">
+<h4>S3.1 / S3.8</h4>
+<p>Block public access enabled at bucket level (all four settings default to true).</p>
+</div>
+<div class="card">
+<h4>S3.4</h4>
+<p>Server-side encryption enabled by default. Supports SSE-KMS with customer-managed keys.</p>
+</div>
+<div class="card">
+<h4>S3.5</h4>
+<p>TLS enforcement via bucket policy. Denies requests over HTTP and TLS versions below 1.2.</p>
+</div>
+<div class="card">
+<h4>S3.9</h4>
+<p>Server access logging configurable with target bucket and prefix for audit trails.</p>
+</div>
+<div class="card">
+<h4>S3.10 / S3.13</h4>
+<p>Lifecycle policies for versioned objects with transitions and noncurrent version expiration.</p>
+</div>
+<div class="card">
+<h4>S3.11</h4>
+<p>Event notifications to Lambda, SQS, and SNS with object-level event filters.</p>
+</div>
+</div>
+</section>
+
+<!-- Industry Adaptation -->
+<section class="section">
+<h2>Industry Adaptation</h2>
+<div class="table-wrap">
+<table>
+<tr><th>Industry</th><th>Use Case</th><th>Configuration Focus</th></tr>
+<tr><td>Financial Services</td><td>Regulatory document retention</td><td>Object Lock (COMPLIANCE mode), KMS CMK, versioning, 7-year lifecycle, access logging</td></tr>
+<tr><td>Healthcare</td><td>HIPAA-compliant medical records</td><td>KMS encryption, TLS enforced, no public access, access logging, MFA Delete</td></tr>
+<tr><td>Media / Entertainment</td><td>Video asset storage and delivery</td><td>Intelligent Tiering, CORS for web players, CloudFront integration, lifecycle to Glacier</td></tr>
+<tr><td>Data Engineering</td><td>Data lake landing zone</td><td>Event notifications (Lambda), VPC access points, lifecycle tiering, replication for DR</td></tr>
+<tr><td>E-Commerce</td><td>Static website and asset hosting</td><td>Website hosting enabled, CORS, CloudFront alias, lifecycle rules for logs</td></tr>
+<tr><td>Compliance / Audit</td><td>Immutable audit log storage</td><td>Object Lock (GOVERNANCE), versioning, access logging, cross-region replication</td></tr>
+</table>
+</div>
+</section>
+
+<!-- Production Readiness Checklist -->
+<section class="section">
+<h2>Production Readiness Checklist</h2>
+<ul class="checklist">
+<li>Enable versioning (default: true) for data protection</li>
+<li>Enable server-side encryption (default: true) with KMS for sensitive data</li>
+<li>Keep block_public_access = true (default) for all buckets</li>
+<li>Keep enforce_tls = true (default) to deny HTTP requests</li>
+<li>Enable access logging for security audit trail</li>
+<li>Configure lifecycle rules to manage storage costs</li>
+<li>Use KMS customer-managed keys for CloudTrail audit capability</li>
+<li>Enable Object Lock for compliance-critical data</li>
+<li>Set force_destroy = false (default) for production buckets</li>
+<li>Use VPC-restricted access points for network isolation</li>
+<li>Enable cross-region replication for disaster recovery</li>
+<li>Configure event notifications for operational automation</li>
+<li>Tag all resources for cost allocation and governance</li>
+<li>Review bucket policy for least-privilege access</li>
+<li>Consider MFA Delete for critical buckets (root account required)</li>
+</ul>
+</section>
+
+<!-- Config Reference -->
+<section class="section">
+<h2>Configuration Reference</h2>
+<h3>Key Variables</h3>
+<div class="table-wrap">
+<table>
+<tr><th>Variable</th><th>Type</th><th>Default</th><th>Description</th></tr>
+<tr><td><code>bucket_name</code></td><td>string</td><td>null</td><td>Globally unique bucket name (3-63 chars)</td></tr>
+<tr><td><code>bucket_prefix</code></td><td>string</td><td>null</td><td>Prefix for auto-generated unique name</td></tr>
+<tr><td><code>force_destroy</code></td><td>bool</td><td>false</td><td>Allow destroying non-empty buckets</td></tr>
+<tr><td><code>enable_versioning</code></td><td>bool</td><td>true</td><td>Enable object versioning</td></tr>
+<tr><td><code>mfa_delete</code></td><td>bool</td><td>false</td><td>Require MFA for version deletes</td></tr>
+<tr><td><code>enable_encryption</code></td><td>bool</td><td>true</td><td>Enable server-side encryption</td></tr>
+<tr><td><code>kms_key_arn</code></td><td>string</td><td>null</td><td>KMS key ARN (null = AES-256)</td></tr>
+<tr><td><code>block_public_access</code></td><td>bool</td><td>true</td><td>Enable all 4 public access block settings</td></tr>
+<tr><td><code>enforce_tls</code></td><td>bool</td><td>true</td><td>Deny HTTP via bucket policy</td></tr>
+<tr><td><code>enable_logging</code></td><td>bool</td><td>false</td><td>Enable access logging</td></tr>
+<tr><td><code>lifecycle_rules</code></td><td>list(object)</td><td>[]</td><td>Transitions, expiration, noncurrent version management</td></tr>
+<tr><td><code>enable_replication</code></td><td>bool</td><td>false</td><td>Enable cross-region replication</td></tr>
+<tr><td><code>enable_object_lock</code></td><td>bool</td><td>false</td><td>Enable WORM (must be set at creation)</td></tr>
+<tr><td><code>object_lock_mode</code></td><td>string</td><td>GOVERNANCE</td><td>GOVERNANCE or COMPLIANCE</td></tr>
+<tr><td><code>object_lock_days</code></td><td>number</td><td>30</td><td>Default retention period in days</td></tr>
+<tr><td><code>enable_website</code></td><td>bool</td><td>false</td><td>Enable static website hosting</td></tr>
+<tr><td><code>event_notifications</code></td><td>object</td><td>{}</td><td>Lambda, SQS, SNS notification targets</td></tr>
+<tr><td><code>access_points</code></td><td>map(object)</td><td>{}</td><td>Named access points with VPC config</td></tr>
+</table>
+</div>
+
+<h3>Outputs</h3>
+<div class="table-wrap">
+<table>
+<tr><th>Output</th><th>Description</th></tr>
+<tr><td><code>bucket_id</code></td><td>The name of the bucket</td></tr>
+<tr><td><code>bucket_arn</code></td><td>ARN in format arn:aws:s3:::bucket-name</td></tr>
+<tr><td><code>bucket_domain_name</code></td><td>bucket-name.s3.amazonaws.com</td></tr>
+<tr><td><code>bucket_regional_domain_name</code></td><td>bucket-name.s3.REGION.amazonaws.com</td></tr>
+<tr><td><code>bucket_hosted_zone_id</code></td><td>Route 53 Hosted Zone ID for the bucket region</td></tr>
+</table>
+</div>
+
+<h3>Cost Estimation</h3>
+<div class="table-wrap">
+<table>
+<tr><th>Feature</th><th>Approximate Cost</th></tr>
+<tr><td>S3 Standard Storage</td><td>~$0.023/GB/month (us-east-1)</td></tr>
+<tr><td>Intelligent Tiering</td><td>$0.0025 per 1,000 objects monitoring fee</td></tr>
+<tr><td>Standard-IA</td><td>~$0.0125/GB/month</td></tr>
+<tr><td>Glacier Instant Retrieval</td><td>~$0.004/GB/month</td></tr>
+<tr><td>Glacier Flexible</td><td>~$0.0036/GB/month</td></tr>
+<tr><td>Deep Archive</td><td>~$0.00099/GB/month</td></tr>
+<tr><td>KMS Encryption</td><td>$1/month/key + $0.03 per 10K requests</td></tr>
+</table>
+</div>
+</section>
+
+<!-- Deployment -->
+<section class="section">
+<h2>Deployment</h2>
+<pre>
+# Minimal - secure defaults
+module "s3_bucket" {
+  source = "github.com/kogunlowo123/terraform-aws-s3-bucket"
+
+  bucket_name = "my-secure-bucket"
+  tags        = { Environment = "production" }
+}
+
+# Full-featured
+module "s3_bucket" {
+  source = "github.com/kogunlowo123/terraform-aws-s3-bucket"
+
+  bucket_name       = "my-app-data"
+  enable_encryption = true
+  kms_key_arn       = aws_kms_key.s3.arn
+  enable_logging    = true
+  logging_target_bucket = "my-logs-bucket"
+
+  lifecycle_rules = [
+    {
+      id      = "tiering"
+      enabled = true
+      transitions = [
+        { days = 30,  storage_class = "STANDARD_IA" },
+        { days = 90,  storage_class = "GLACIER" },
+        { days = 365, storage_class = "DEEP_ARCHIVE" },
+      ]
+      noncurrent_version_expiration = { days = 180 }
+    },
+  ]
+
+  enable_replication  = true
+  replication_role_arn = aws_iam_role.replication.arn
+  replication_rules = [{
+    id                 = "replicate-all"
+    status             = "Enabled"
+    priority           = 1
+    destination_bucket = module.replica.bucket_arn
+  }]
+
+  tags = { Environment = "production" }
+}
+</pre>
+<pre>
+terraform init
+terraform plan
+terraform apply
+</pre>
+</section>
+
+<!-- Links -->
+<section class="section">
+<h2>Links</h2>
+<ul style="list-style:none;line-height:2.2">
+<li><a href="https://docs.aws.amazon.com/s3/index.html">AWS S3 Documentation</a></li>
+<li><a href="https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_bucket">Terraform: aws_s3_bucket</a></li>
+<li><a href="https://www.cisecurity.org/benchmark/amazon_web_services">CIS AWS Foundations Benchmark</a></li>
+<li><a href="https://docs.aws.amazon.com/securityhub/latest/userguide/s3-controls.html">AWS Security Hub S3 Controls</a></li>
+<li><a href="https://aws.amazon.com/s3/pricing/">AWS S3 Pricing</a></li>
+<li><a href="https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lock.html">S3 Object Lock</a></li>
+<li><a href="https://docs.aws.amazon.com/AmazonS3/latest/userguide/access-points.html">S3 Access Points</a></li>
+</ul>
+</section>
+
+<footer>
+<p>terraform-aws-s3-bucket &middot; Architecture Document</p>
+<p>Generated for reference purposes. Review all configurations before production deployment.</p>
+</footer>
+
+</div>
+</body>
+</html>
