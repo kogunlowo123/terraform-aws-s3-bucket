@@ -1,7 +1,3 @@
-################################################################################
-# S3 Bucket
-################################################################################
-
 resource "aws_s3_bucket" "this" {
   bucket        = var.bucket_name
   bucket_prefix = var.bucket_prefix
@@ -9,12 +5,8 @@ resource "aws_s3_bucket" "this" {
 
   object_lock_enabled = var.enable_object_lock
 
-  tags = local.common_tags
+  tags = var.tags
 }
-
-################################################################################
-# Ownership Controls
-################################################################################
 
 resource "aws_s3_bucket_ownership_controls" "this" {
   bucket = aws_s3_bucket.this.id
@@ -24,10 +16,6 @@ resource "aws_s3_bucket_ownership_controls" "this" {
   }
 }
 
-################################################################################
-# Versioning
-################################################################################
-
 resource "aws_s3_bucket_versioning" "this" {
   bucket = aws_s3_bucket.this.id
 
@@ -36,10 +24,6 @@ resource "aws_s3_bucket_versioning" "this" {
     mfa_delete = var.mfa_delete ? "Enabled" : "Disabled"
   }
 }
-
-################################################################################
-# Server-Side Encryption
-################################################################################
 
 resource "aws_s3_bucket_server_side_encryption_configuration" "this" {
   count = var.enable_encryption ? 1 : 0
@@ -56,10 +40,6 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "this" {
   }
 }
 
-################################################################################
-# Public Access Block
-################################################################################
-
 resource "aws_s3_bucket_public_access_block" "this" {
   bucket = aws_s3_bucket.this.id
 
@@ -69,10 +49,6 @@ resource "aws_s3_bucket_public_access_block" "this" {
   restrict_public_buckets = var.block_public_access
 }
 
-################################################################################
-# Logging
-################################################################################
-
 resource "aws_s3_bucket_logging" "this" {
   count = var.enable_logging ? 1 : 0
 
@@ -81,10 +57,6 @@ resource "aws_s3_bucket_logging" "this" {
   target_bucket = var.logging_target_bucket
   target_prefix = var.logging_target_prefix
 }
-
-################################################################################
-# Lifecycle Configuration
-################################################################################
 
 resource "aws_s3_bucket_lifecycle_configuration" "this" {
   count = length(var.lifecycle_rules) > 0 ? 1 : 0
@@ -141,10 +113,6 @@ resource "aws_s3_bucket_lifecycle_configuration" "this" {
   }
 }
 
-################################################################################
-# Replication Configuration
-################################################################################
-
 resource "aws_s3_bucket_replication_configuration" "this" {
   count = var.enable_replication ? 1 : 0
 
@@ -177,10 +145,6 @@ resource "aws_s3_bucket_replication_configuration" "this" {
   }
 }
 
-################################################################################
-# Object Lock Configuration
-################################################################################
-
 resource "aws_s3_bucket_object_lock_configuration" "this" {
   count = var.enable_object_lock ? 1 : 0
 
@@ -195,10 +159,6 @@ resource "aws_s3_bucket_object_lock_configuration" "this" {
 
   depends_on = [aws_s3_bucket_versioning.this]
 }
-
-################################################################################
-# CORS Configuration
-################################################################################
 
 resource "aws_s3_bucket_cors_configuration" "this" {
   count = length(var.cors_rules) > 0 ? 1 : 0
@@ -218,10 +178,6 @@ resource "aws_s3_bucket_cors_configuration" "this" {
   }
 }
 
-################################################################################
-# Website Configuration
-################################################################################
-
 resource "aws_s3_bucket_website_configuration" "this" {
   count = var.enable_website ? 1 : 0
 
@@ -236,12 +192,8 @@ resource "aws_s3_bucket_website_configuration" "this" {
   }
 }
 
-################################################################################
-# Event Notifications
-################################################################################
-
 resource "aws_s3_bucket_notification" "this" {
-  count = local.has_notifications ? 1 : 0
+  count = (length(var.event_notifications.lambda_functions) + length(var.event_notifications.sqs_queues) + length(var.event_notifications.sns_topics)) > 0 ? 1 : 0
 
   bucket = aws_s3_bucket.this.id
 
@@ -282,10 +234,6 @@ resource "aws_s3_bucket_notification" "this" {
   }
 }
 
-################################################################################
-# Access Points
-################################################################################
-
 resource "aws_s3_access_point" "this" {
   for_each = var.access_points
 
@@ -303,15 +251,16 @@ resource "aws_s3_access_point" "this" {
   policy = each.value.policy
 }
 
-################################################################################
-# Bucket Policy
-################################################################################
-
 resource "aws_s3_bucket_policy" "this" {
-  count = local.attach_policy ? 1 : 0
+  count = (var.enforce_tls || var.bucket_policy != null) ? 1 : 0
 
   bucket = aws_s3_bucket.this.id
-  policy = local.bucket_policy
+
+  policy = (
+    var.enforce_tls && var.bucket_policy != null ? data.aws_iam_policy_document.combined[0].json :
+    var.enforce_tls ? data.aws_iam_policy_document.tls_enforcement[0].json :
+    var.bucket_policy
+  )
 
   depends_on = [
     aws_s3_bucket_public_access_block.this,

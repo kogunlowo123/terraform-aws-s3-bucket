@@ -1,15 +1,3 @@
-################################################################################
-# Data Sources
-################################################################################
-
-data "aws_region" "current" {}
-
-data "aws_caller_identity" "current" {}
-
-################################################################################
-# TLS Enforcement Policy
-################################################################################
-
 data "aws_iam_policy_document" "tls_enforcement" {
   count = var.enforce_tls ? 1 : 0
 
@@ -55,10 +43,6 @@ data "aws_iam_policy_document" "tls_enforcement" {
     }
   }
 }
-
-################################################################################
-# Combined Policy (TLS + Custom)
-################################################################################
 
 data "aws_iam_policy_document" "custom" {
   count = var.enforce_tls && var.bucket_policy != null ? 1 : 0

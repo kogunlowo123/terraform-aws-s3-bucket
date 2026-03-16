@@ -8,11 +8,10 @@ on:
 
 permissions:
   contents: read
-  pull-requests: write
 
 jobs:
-  terraform:
-    name: Terraform Validate & Lint
+  validate:
+    name: Validate
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -23,7 +22,7 @@ jobs:
         with:
           terraform_version: "1.7.0"
 
-      - name: Terraform Format Check
+      - name: Terraform Format
         run: terraform fmt -check -recursive
 
       - name: Terraform Init
@@ -31,6 +30,13 @@ jobs:
 
       - name: Terraform Validate
         run: terraform validate
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Setup TFLint
         uses: terraform-linters/setup-tflint@v4
@@ -52,10 +58,9 @@ jobs:
           quiet: true
           framework: terraform
 
-  validate-examples:
+  examples:
     name: Validate Examples
     runs-on: ubuntu-latest
-    if: hashFiles('examples/') != ''
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -68,10 +73,9 @@ jobs:
       - name: Validate Examples
         run: |
           for dir in examples/*/; do
-            echo "Validating $dir"
+            echo "--- Validating $dir ---"
             cd "$dir"
             terraform init -backend=false
             terraform validate
             cd "$GITHUB_WORKSPACE"
           done
-
