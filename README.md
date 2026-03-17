@@ -1,3 +1,9 @@
+![Terraform](https://img.shields.io/badge/Terraform-%3E%3D1.5-blueviolet?logo=terraform)
+![AWS](https://img.shields.io/badge/AWS-FF9900?logo=amazonaws&logoColor=white)
+![License](https://img.shields.io/badge/License-MIT-green)
+![CI](https://img.shields.io/github/actions/workflow/status/kogunlowo123/terraform-aws-s3-bucket/terraform-ci.yml?label=CI)
+![GitHub release](https://img.shields.io/github/v/release/kogunlowo123/terraform-aws-s3-bucket)
+
 # terraform-aws-s3-bucket
 
 Production-grade Terraform module for AWS S3 buckets with comprehensive security controls, intelligent tiering, replication, object lock, access points, and event notifications.
